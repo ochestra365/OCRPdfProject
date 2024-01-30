@@ -5,6 +5,10 @@ using System.Windows.Forms;
 using Tesseract;
 using Ghostscript.NET;
 using Ghostscript.NET.Rasterizer;
+using iTextSharp;
+using iTextSharp.text.pdf;
+using iTextSharp.text;
+
 namespace PDF_OCR
 {
     public partial class Form1 : Form
@@ -70,15 +74,21 @@ namespace PDF_OCR
                 }
                 #endregion
                 MakePDFtoImage(dialog.SafeFileName, int.TryParse(this.textBox1.Text, out int page) ? page : 1);
-                string result = GetText(Path.Combine(imagePath,"temp.png"), "kor+eng");
+                string result = GetText(Path.Combine(imagePath, "temp.png"), "eng");
                 if (!string.IsNullOrEmpty(result))
                 {
                     this.rtbOcr.Text = result;
+                    MakePDF(result);
                 }
                 Bitmap bitmap = new Bitmap($@"{imagePath}\temp.png");
                 picMain.Image = bitmap;
             }
         }
+
+
+
+    
+
 
         private bool MakePDFtoImage(string _pdfPath, int _page)
         {
@@ -105,7 +115,7 @@ namespace PDF_OCR
         /// <param name="_filePath">파일 경로</param>
         /// <param name="_language">변환할 언어</param>
         /// <returns>변환이 완료된 언어</returns>
-        private string GetText(string _filePath, string _language = "eng")
+        private string GetText(string _filePath, string _language = "kor+eng")
         {
             string result = string.Empty;
             try
@@ -113,6 +123,7 @@ namespace PDF_OCR
                 Bitmap img = new Bitmap(_filePath);
                 TesseractEngine ocr = new TesseractEngine("./tessdata", _language, EngineMode.Default);
                 result = ocr.Process(img).GetText();
+                //result = ocr.Process(img).GetText();
                 return result;
             }
             catch (Exception ex)
@@ -121,5 +132,24 @@ namespace PDF_OCR
             }
             return result;
         }
+
+        private void MakePDF(string _text)
+        {
+            try
+            {
+                string hi = "hi it is test for make PDF File";
+                Document pdfDocument = new Document();
+                PdfWriter.GetInstance(pdfDocument, new FileStream("output2.pdf", FileMode.Create));
+                pdfDocument.Open();
+                pdfDocument.Add(new Paragraph(_text));
+                pdfDocument.Close();
+
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.ToString());
+            }
+        }
+
     }
 }
