@@ -24,7 +24,7 @@ namespace PDF_OCR
 
             this.rtbOcr.Text = string.Empty;
 
-            string result = GetText(startUpPath + imageName, "kor");
+            string result = GetText(startUpPath + imageName, "kor+eng");
             if (!string.IsNullOrEmpty(result))
             {
                 this.rtbOcr.Text = result;
