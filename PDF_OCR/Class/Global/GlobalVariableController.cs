@@ -107,10 +107,10 @@ namespace PDF_OCR.Class.Global
             {
                 JObject Jnaver = JObject.Parse(_jsonString);
                 JEnumerable<JToken> children = Jnaver["images"][0]["fields"].Children();
-                foreach (JToken token in children)
+                foreach (JToken child in children)
                 {
-                    bool isLinebreak=Boolean.Parse( token.SelectToken("lineBreak").ToString());//라인 분류
-                    sb.Append(isLinebreak ? $"{token.SelectToken("inferText")}\n" : $"{token.SelectToken("inferText")} ");
+                    bool isLinebreak=Boolean.Parse( child.SelectToken("lineBreak").ToString());//라인 분류
+                    sb.Append(isLinebreak ? $"{child.SelectToken("inferText")}\n" : $"{child.SelectToken("inferText")} ");
                 }
                 return sb.ToString();
             }

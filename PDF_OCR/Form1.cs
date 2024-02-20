@@ -59,8 +59,8 @@ namespace PDF_OCR
             {
                 string base64String = Convert.ToBase64String(File.ReadAllBytes("image.pdf"));// 바이너리 파일 송신 전용 문자열 변환
                 HttpClient client = new HttpClient();// 클라이언트 생성자 생성
-                HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Post, "https://a76qrjk90b.apigw.ntruss.com/custom/v1/28075/5c4b24044cbadee6b6f258977a87019cbc14e5e63d4cacfee629995432f8691c/general");//2번째 인자에 발급받은 Api Invoke URL 입력
-                request.Headers.Add("X-OCR-SECRET", "S1B5c2tuY1l1eGF6U0FXelhWTE9WQUdjY0taUVJibkU=");//2번째 인자에 발급받은 시크릿 코드 입력
+                HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Post, "");//2번째 인자에 발급받은 Api Invoke URL 입력
+                request.Headers.Add("X-OCR-SECRET", "");//2번째 인자에 발급받은 시크릿 코드 입력
 
                 StringContent content2 = new StringContent("{\"images\": [{\"format\": \"pdf\",\"name\": \"guide-demo\"," +// 요청 BODY 내용
                    $"\"data\": \"{base64String}" +
