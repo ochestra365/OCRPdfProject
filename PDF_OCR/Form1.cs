@@ -15,6 +15,7 @@ using System.Net.Http;
 using System.Data;
 using PDF_OCR.Class.Global;
 using System.Threading;
+using System.Linq;
 
 namespace PDF_OCR
 {
@@ -59,8 +60,8 @@ namespace PDF_OCR
             {
                 string base64String = Convert.ToBase64String(File.ReadAllBytes("image.pdf"));// 바이너리 파일 송신 전용 문자열 변환
                 HttpClient client = new HttpClient();// 클라이언트 생성자 생성
-                HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Post, "");//2번째 인자에 발급받은 Api Invoke URL 입력
-                request.Headers.Add("X-OCR-SECRET", "");//2번째 인자에 발급받은 시크릿 코드 입력
+                HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Post, "URL");//2번째 인자에 발급받은 Api Invoke URL 입력
+                request.Headers.Add("X-OCR-SECRET", "SECRET_KEY");//2번째 인자에 발급받은 시크릿 코드 입력
 
                 StringContent content2 = new StringContent("{\"images\": [{\"format\": \"pdf\",\"name\": \"guide-demo\"," +// 요청 BODY 내용
                    $"\"data\": \"{base64String}" +
@@ -150,7 +151,7 @@ namespace PDF_OCR
                 JObject tempJobject = new JObject();
                 //string jsonString = File.ReadAllText("RESPONSE.json").Replace("\r", "").Replace("\n", "").Replace("\t", "");
                 string jsonString = File.ReadAllText("[표22]TextOCR[20240219145919].json").Replace("\r", "").Replace("\n", "").Replace("\t", "");
-                string parsedStr=GlobalVariableController.PrettyPrint(jsonString);
+                string parsedStr = GlobalVariableController.PrettyPrint(jsonString);
                 rtbOcr.Text = parsedStr;
                 MakePDF(parsedStr);
             }
@@ -220,8 +221,14 @@ namespace PDF_OCR
             }
             return result;
         }
+        /// <summary>
+        /// PDF 문서 제작.
+        ///  한글 출력 가능하게 하는 코드(https://uxtime.tistory.com/entry/C-PDF-Open-Source-ItextSharp-%ED%95%9C%EA%B8%80-%EC%B6%9C%EB%A0%A5)
+        /// </summary>
+        /// <param name="_text">보정된 JSON 문자열</param>
         private void MakePDF(string _text = "")
         {
+            this.drgMain.DataSource = null;
             rtbOcr.Clear();
             string jsonString = File.ReadAllText("[표22]TextOCR[20240219145919].json").Replace("\r", "").Replace("\n", "").Replace("\t", "");
             string parsedStr = GlobalVariableController.PrettyPrint(jsonString);
@@ -235,7 +242,7 @@ namespace PDF_OCR
                 JEnumerable<JToken> tempToeken = tempJobject["images"][0]["tables"].Children();
                 int tableCount = 0;
                 DataSet set = new DataSet();
-
+                DataTable resultTable = new DataTable();
                 foreach (JToken item in tempToeken)
                 {
                     DataTable jsonTable = new DataTable();
@@ -244,60 +251,55 @@ namespace PDF_OCR
                     tempTable = jsonTable.Copy();
                     set.Tables.Add(jsonTable);
                     this.PDF_TABLE.Tables.Add(tempTable);
-                    //this.PDF_TABLE.Tables.Add(jsonTable);
                     tableCount++;
                 }
-                if (this.PDF_TABLE.Tables[0] != null)
+                if (this.PDF_TABLE != null)
                 {
-                    if (this.PDF_TABLE.Tables[0].Rows.Count <= 0) { return; }
-                    // 주어진 JSON 정보를 토대로 PDF의 표를 구현.
-                    DataTable resultTable = new DataTable();
-                    if (int.TryParse(this.PDF_TABLE.Tables[0].Rows[this.PDF_TABLE.Tables[0].Rows.Count - 1][4].ToString().Trim(), out int columnCount))
-                    {
-                        // 컬럼 추가
-                        for (int i = 0; i < columnCount + 1; i++)
-                        {
-                            resultTable.Columns.Add();
-                        }
-                        // row 추가
-                        int rowCnt = Convert.ToInt32(this.PDF_TABLE.Tables[0].Select(" rowIndex = max(rowIndex) ")[0]["rowIndex"].ToString());
-                        for (int i = 0; i < rowCnt + 1; i++)
-                        {
-                            resultTable.Rows.Add();
-                        }
-                        // 값 삽입
-                        foreach (DataRow row in this.PDF_TABLE.Tables[0].Rows)
-                        {
-                            int rowIndex = int.Parse(row["rowIndex"].ToString());
-                            int colIndex = int.Parse(row["columIndex"].ToString());
-                            string value = row["value"].ToString();
-                            resultTable.Rows[rowIndex][colIndex] = value;
-                            row.AcceptChanges();
-                        }
-                        this.drgMain.DataSource = resultTable;
-                    }
-                    // 표
-                    // [TODO] 240219 pdf 한글 출력
-                    // 한글 출력 가능하게 하는 코드(https://uxtime.tistory.com/entry/C-PDF-Open-Source-ItextSharp-%ED%95%9C%EA%B8%80-%EC%B6%9C%EB%A0%A5)
-                    BaseFont.AddToResourceSearch("iTextAsian.dll");
-                    Document pdfDocument = new Document(PageSize.A4.Rotate());
-                    PdfWriter.GetInstance(pdfDocument, new FileStream("output.pdf", FileMode.Create));
-                    pdfDocument.Open();
+                    bool isSpanExist = false;
+                    // span이 있는 지 확인
+                    isSpanExist = this.PDF_TABLE.Tables[1].Rows.Cast<DataRow>().Any(row => (row["rowSpan"].ToString() != "1") || (row["columnSpan"].ToString() != "1"));
+                    // itextSharp에 한글 폰트 추가.
                     string GulimFont = Environment.GetFolderPath(Environment.SpecialFolder.System) + @"\..\Fonts\gulim.ttc";
+                    // itextSharp 폰트 저장
                     FontFactory.Register(GulimFont);
-                    PdfPTable table = new PdfPTable(resultTable.Columns.Count);
-                    iTextSharp.text.Font DataFont = FontFactory.GetFont("굴림체", BaseFont.IDENTITY_H, 10);
-                    for (int i = 0; i < resultTable.Rows.Count; i++)
+                    // A4 크기의 pdf 문서 생성
+                    Document pdfDocument = new Document(PageSize.A4.Rotate());
+                    // 파일을 생성하면서 output.pdf 글자를 만든다.
+                    PdfWriter.GetInstance(pdfDocument, new FileStream("output.pdf", FileMode.Create));
+                    // itextSharp이 선택할 폰트 정보. -> 2번째 인자가 무슨 의미인 지 모름.(폰트, ?, 폰트 크기)
+                    iTextSharp.text.Font DataFont = FontFactory.GetFont("굴림체", BaseFont.IDENTITY_H, 9);
+                    // 생성한 PDF 열기
+                    pdfDocument.Open();
+
+                    // span기능 테이블 구현 추가.
+                    if (isSpanExist)
                     {
-                        for (int j = 0; j < resultTable.Columns.Count; j++)
+                        int columnCountMax = 0;
+                        int rowConutMax = 0;
+                        DataTable tempTable = this.PDF_TABLE.Tables[1];
+                        columnCountMax =tempTable.Rows.Cast<DataRow>().Max<DataRow>(row => int.Parse(row[4].ToString()));
+                        PdfPTable table = new PdfPTable(columnCountMax);
+                        
+                        pdfDocument.Add(table);
+                    }
+                    else
+                    {
+                        resultTable = GlobalVariableController.MakeNoSpanResultTable(this.PDF_TABLE.Tables[0]);
+                        if (resultTable == null) { return; }
+
+                        PdfPTable table = new PdfPTable(resultTable.Columns.Count);
+                        for (int i = 0; i < resultTable.Rows.Count; i++)
                         {
-                            PdfPCell cell_ = new PdfPCell(new Phrase(resultTable.Rows[i][j].ToString(), DataFont));
-                            cell_.HorizontalAlignment = 1;// 중앙 정렬
-                            table.AddCell(cell_);
+                            for (int j = 0; j < resultTable.Columns.Count; j++)
+                            {
+                                PdfPCell cell_ = new PdfPCell(new Phrase(resultTable.Rows[i][j].ToString(), DataFont));
+                                cell_.HorizontalAlignment = 1;// 중앙 정렬
+                                table.AddCell(cell_);
+                            }
                         }
+                        pdfDocument.Add(table);
                     }
                     pdfDocument.Add(new Paragraph($"{parsedStr}\n\n\n", DataFont));
-                    pdfDocument.Add(table);
                     pdfDocument.Close();
                 }
             }

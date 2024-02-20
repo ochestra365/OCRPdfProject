@@ -1,11 +1,7 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 using System.Data;
-using System.Windows.Forms;
-using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 namespace PDF_OCR.Class.Global
 {
@@ -94,11 +90,10 @@ namespace PDF_OCR.Class.Global
             return null;
         }
         /// <summary>
-        /// 20240219 TODO
-        /// 네이버 클로바 OCR로부터 RETURN 받은 정보의 좌표값을 계산해서 이쁘게 출력
+        /// OCR로부터 받은 JSON 문자열 보정
         /// </summary>
-        /// <param name="jsonString">네이버 클로바 OCR로부터 리턴받은 정보</param>
-        /// <returns> xy 좌표값 보정된 광학인식 문자열.</returns>
+        /// <param name="_jsonString">네이버 OCR로부터 수신한 JSON</param>
+        /// <returns>보정 문자열</returns>
         public static string PrettyPrint(string _jsonString)
         {
 
@@ -109,7 +104,7 @@ namespace PDF_OCR.Class.Global
                 JEnumerable<JToken> children = Jnaver["images"][0]["fields"].Children();
                 foreach (JToken child in children)
                 {
-                    bool isLinebreak=Boolean.Parse( child.SelectToken("lineBreak").ToString());//라인 분류
+                    bool isLinebreak = Boolean.Parse(child.SelectToken("lineBreak").ToString());//라인 분류
                     sb.Append(isLinebreak ? $"{child.SelectToken("inferText")}\n" : $"{child.SelectToken("inferText")} ");
                 }
                 return sb.ToString();
@@ -119,6 +114,45 @@ namespace PDF_OCR.Class.Global
                 Console.WriteLine(ex.ToString());
             }
             return string.Empty;
+        }
+        /// <summary>
+        /// 정보 테이블로부터 PDF에 삽입할 테이블을 생산(rowspan, columnspan이 전부 0인 경우 사용 가능)
+        /// </summary>
+        /// <param name="_table">GetJsontoDataTable 메서드로 만들어진 테이블</param>
+        /// <returns>PDF에 삽입할 테이블[기본값 : null]</returns>
+        public static DataTable MakeNoSpanResultTable(DataTable _table)
+        {
+            DataTable resultTable = new DataTable();
+            try
+            {
+                if (_table != null)
+                {
+                    if (_table.Rows.Count <= 0) { return null; }
+                    if (int.TryParse(_table.Rows[_table.Rows.Count - 1][4].ToString().Trim(), out int columnCount))
+                    {
+                        // 컬럼 추가
+                        for (int i = 0; i < columnCount + 1; i++) { resultTable.Columns.Add(); }
+                        // row 추가
+                        int rowCnt = Convert.ToInt32(_table.Select(" rowIndex = max(rowIndex) ")[0]["rowIndex"].ToString());
+                        for (int i = 0; i < rowCnt + 1; i++) { resultTable.Rows.Add(); }
+                        // 값 삽입
+                        foreach (DataRow row in _table.Rows)
+                        {
+                            int rowIndex = int.Parse(row["rowIndex"].ToString());
+                            int colIndex = int.Parse(row["columIndex"].ToString());
+                            string value = row["value"].ToString();
+                            resultTable.Rows[rowIndex][colIndex] = value;
+                            row.AcceptChanges();
+                        }
+                        return resultTable;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.ToString());
+            }
+            return null;
         }
     }
 }
