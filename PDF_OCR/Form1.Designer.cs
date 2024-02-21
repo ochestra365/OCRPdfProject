@@ -129,7 +129,7 @@ namespace PDF_OCR
             this.Enabled = false;
             this.Name = "Form1";
             this.Text = "Form1";
-            this.Load += new System.EventHandler(this.Form1_Load);
+            this.Load += new System.EventHandler(this.Form1_Load_1);
             ((System.ComponentModel.ISupportInitialize)(this.picMain)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.drgMain)).EndInit();
             this.ResumeLayout(false);

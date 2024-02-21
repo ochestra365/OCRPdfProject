@@ -230,117 +230,125 @@ namespace PDF_OCR
         {
             this.drgMain.DataSource = null;
             rtbOcr.Clear();
-            string jsonString = (!string.IsNullOrEmpty(_text)) ? _text : File.ReadAllText("202421_공백없앤_naver_OCR.json").Replace("\r", "").Replace("\n", "").Replace("\t", "");
+            string jsonString = (!string.IsNullOrEmpty(_text)) ? _text : File.ReadAllText("240221_naver_OCR.json").Replace("\r", "").Replace("\n", "").Replace("\t", "");
             string parsedStr = GlobalVariableController.PrettyPrint(jsonString);
+            if (string.IsNullOrEmpty(parsedStr)) { return; }
             rtbOcr.Text = parsedStr;
             JObject tempJobject = JObject.Parse(jsonString);
             try
             {
                 if (File.Exists("ocroutput.pdf")) { File.Delete("ocroutput.pdf"); Thread.Sleep(10); }
-                JEnumerable<JToken> tempToeken = tempJobject["images"][0]["tables"].Children();
-                int tableCount = 0;
-                DataSet set = new DataSet();
-                DataTable resultTable = new DataTable();
-                foreach (JToken item in tempToeken)
+                JEnumerable<JToken> isContainTables = tempJobject["images"][0].Children();
+                bool isContainTable = false;
+                foreach (JToken token in isContainTables)
                 {
-                    DataTable jsonTable = new DataTable();
-                    DataTable tempTable = new DataTable();
-                    jsonTable = GlobalVariableController.GetJsontoDataTable(jsonString, tableCount);
-                    set.Tables.Add(jsonTable);
-                    tableCount++;
-                }
-                int selectedTable = 0;
-
-                if (set != null)
-                {
-                    bool isSpanExist = false;
-                    isSpanExist = set.Tables[selectedTable].Rows.Cast<DataRow>().Any(row => (row["rowSpan"].ToString() != "1") || (row["columnSpan"].ToString() != "1"));
-                    string GulimFont = Environment.GetFolderPath(Environment.SpecialFolder.System) + @"\..\Fonts\gulim.ttc";
-                    FontFactory.Register(GulimFont);
-                    Document pdfDocument = new Document(PageSize.A4.Rotate());
-                    PdfWriter.GetInstance(pdfDocument, new FileStream("ocroutput.pdf", FileMode.Create));
-                    iTextSharp.text.Font DataFont = FontFactory.GetFont("굴림체", BaseFont.IDENTITY_H, 9);
-                    pdfDocument.Open();
-                    while (selectedTable < tableCount)
+                    if (token.Path.Split('.')[1].Equals("tables"))
                     {
-                        if (isSpanExist)
-                        {
-                            DataTable tempTable = set.Tables[selectedTable];
-                            int columnCountMax = tempTable.Rows.Cast<DataRow>().Max<DataRow>(row => (int)row[4]);
-                            int rowConutMax = tempTable.Rows.Cast<DataRow>().Max<DataRow>(row => (int)row[2]);
-                            PdfPTable table = new PdfPTable(columnCountMax + 1);
-
-                            for (int i = 0; i <= rowConutMax; i++)
-                            {
-                                for (int j = 0; j < columnCountMax+1; j++)
-                                {
-                                    try
-                                    {
-                                        DataRow[] sameCoordinate = tempTable.Select($" {tempTable.Columns[2].ColumnName} = '{i}' AND {tempTable.Columns[4].ColumnName}='{j}' ");
-                                        bool isOnlyCoordinate = sameCoordinate.Length == 1;
-                                        if (isOnlyCoordinate)
-                                        {
-                                            DataRow row = tempTable.AsEnumerable().First(x => int.Parse(x[2].ToString()).Equals(i) && int.Parse(x[4].ToString()).Equals(j));
-                                            int rowSpan = (int)row.ItemArray[1];
-                                            int colSpan = (int)row.ItemArray[3];
-                                            string value = row.ItemArray[5].ToString();
-                                            PdfPCell cell = new PdfPCell(new Phrase(value, DataFont));
-                                            cell.HorizontalAlignment = 1;
-                                            cell.Rowspan = rowSpan;
-                                            cell.Colspan = colSpan;
-                                            table.AddCell(cell);
-                                        }
-                                        else
-                                        {
-                                            int rowSpan = (int)sameCoordinate[0].ItemArray[1];
-                                            int colSpan = (int)sameCoordinate[0].ItemArray[3];
-                                            StringBuilder sb = new StringBuilder();
-                                            for(int k = 0; k < sameCoordinate.Length; k++)
-                                            {
-                                                string value = sameCoordinate[k].ItemArray[5].ToString();
-                                                sb.Append(k!=sameCoordinate.Length-1 ? $"{value}\n" : $"{value}");
-                                            }
-                                            PdfPCell cell = new PdfPCell(new Phrase(sb.ToString(), DataFont));
-                                            cell.HorizontalAlignment = 1;
-                                            cell.Rowspan = rowSpan;
-                                            cell.Colspan = colSpan;
-                                            table.AddCell(cell);
-                                        }
-                                    }
-                                    catch (Exception ex)
-                                    {
-                                        continue;
-                                    }
-                                }
-                            }
-
-                            pdfDocument.Add(table);
-                            pdfDocument.Add(new Paragraph($"\n\n\n", DataFont));
-                        }
-                        else
-                        {
-                            resultTable = GlobalVariableController.MakeNoSpanResultTable(set.Tables[selectedTable]);
-                            if (resultTable == null) { return; }
-
-                            PdfPTable table = new PdfPTable(resultTable.Columns.Count);
-                            for (int i = 0; i < resultTable.Rows.Count; i++)
-                            {
-                                for (int j = 0; j < resultTable.Columns.Count; j++)
-                                {
-                                    PdfPCell cell_ = new PdfPCell(new Phrase(resultTable.Rows[i][j].ToString(), DataFont));
-                                    cell_.HorizontalAlignment = 1;// 중앙 정렬
-                                    table.AddCell(cell_);
-                                }
-                            }
-                            pdfDocument.Add(table);
-                            pdfDocument.Add(new Paragraph($"\n\n\n", DataFont));
-                        }
-                        selectedTable++;
+                        isContainTable = true;
                     }
-
-                    pdfDocument.Add(new Paragraph($"{parsedStr}\n\n\n", DataFont));
-                    pdfDocument.Close();
                 }
+                string GulimFont = Environment.GetFolderPath(Environment.SpecialFolder.System) + @"\..\Fonts\gulim.ttc";
+                FontFactory.Register(GulimFont);
+                Document pdfDocument = new Document(PageSize.A4.Rotate());
+                PdfWriter.GetInstance(pdfDocument, new FileStream("ocroutput.pdf", FileMode.Create));
+                iTextSharp.text.Font DataFont = FontFactory.GetFont("굴림체", BaseFont.IDENTITY_H, 9);
+                pdfDocument.Open();
+                if (isContainTable)
+                {
+                    JEnumerable<JToken> tempToeken = tempJobject["images"][0]["tables"].Children();
+                    int tableCount = 0;
+                    DataSet set = new DataSet();
+                    DataTable resultTable = new DataTable();
+                    foreach (JToken item in tempToeken)
+                    {
+                        DataTable jsonTable = new DataTable();
+                        DataTable tempTable = new DataTable();
+                        jsonTable = GlobalVariableController.GetJsontoDataTable(jsonString, tableCount);
+                        set.Tables.Add(jsonTable);
+                        tableCount++;
+                    }
+                    int selectedTable = 0;
+                    if (set != null)
+                    {
+                        bool isSpanExist = false;
+                        isSpanExist = set.Tables[selectedTable].Rows.Cast<DataRow>().Any(row => (row["rowSpan"].ToString() != "1") || (row["columnSpan"].ToString() != "1"));
+                        while (selectedTable < tableCount)
+                        {
+                            if (isSpanExist)
+                            {
+                                DataTable tempTable = set.Tables[selectedTable];
+                                int columnCountMax = tempTable.Rows.Cast<DataRow>().Max<DataRow>(row => (int)row[4]);
+                                int rowConutMax = tempTable.Rows.Cast<DataRow>().Max<DataRow>(row => (int)row[2]);
+                                PdfPTable table = new PdfPTable(columnCountMax + 1);
+
+                                for (int i = 0; i <= rowConutMax; i++)
+                                {
+                                    for (int j = 0; j < columnCountMax + 1; j++)
+                                    {
+                                        try
+                                        {
+                                            DataRow[] sameCoordinate = tempTable.Select($" {tempTable.Columns[2].ColumnName} = '{i}' AND {tempTable.Columns[4].ColumnName}='{j}' ");
+                                            bool isOnlyCoordinate = sameCoordinate.Length == 1;
+                                            if (isOnlyCoordinate)
+                                            {
+                                                DataRow row = tempTable.AsEnumerable().First(x => int.Parse(x[2].ToString()).Equals(i) && int.Parse(x[4].ToString()).Equals(j));
+                                                int rowSpan = (int)row.ItemArray[1];
+                                                int colSpan = (int)row.ItemArray[3];
+                                                string value = row.ItemArray[5].ToString();
+                                                PdfPCell cell = new PdfPCell(new Phrase(value, DataFont));
+                                                cell.HorizontalAlignment = 1;
+                                                cell.Rowspan = rowSpan;
+                                                cell.Colspan = colSpan;
+                                                table.AddCell(cell);
+                                            }
+                                            else
+                                            {
+                                                int rowSpan = (int)sameCoordinate[0].ItemArray[1];
+                                                int colSpan = (int)sameCoordinate[0].ItemArray[3];
+                                                StringBuilder sb = new StringBuilder();
+                                                for (int k = 0; k < sameCoordinate.Length; k++)
+                                                {
+                                                    string value = sameCoordinate[k].ItemArray[5].ToString();
+                                                    sb.Append(k != sameCoordinate.Length - 1 ? $"{value}\n" : $"{value}");
+                                                }
+                                                PdfPCell cell = new PdfPCell(new Phrase(sb.ToString(), DataFont));
+                                                cell.HorizontalAlignment = 1;
+                                                cell.Rowspan = rowSpan;
+                                                cell.Colspan = colSpan;
+                                                table.AddCell(cell);
+                                            }
+                                        }
+                                        catch { continue; }
+                                    }
+                                }
+
+                                pdfDocument.Add(table);
+                                pdfDocument.Add(new Paragraph($"\n\n\n", DataFont));
+                            }
+                            else
+                            {
+                                resultTable = GlobalVariableController.MakeNoSpanResultTable(set.Tables[selectedTable]);
+                                if (resultTable == null) { return; }
+
+                                PdfPTable table = new PdfPTable(resultTable.Columns.Count);
+                                for (int i = 0; i < resultTable.Rows.Count; i++)
+                                {
+                                    for (int j = 0; j < resultTable.Columns.Count; j++)
+                                    {
+                                        PdfPCell cell_ = new PdfPCell(new Phrase(resultTable.Rows[i][j].ToString(), DataFont));
+                                        cell_.HorizontalAlignment = 1;// 중앙 정렬
+                                        table.AddCell(cell_);
+                                    }
+                                }
+                                pdfDocument.Add(table);
+                                pdfDocument.Add(new Paragraph($"\n\n\n", DataFont));
+                            }
+                            selectedTable++;
+                        }
+                    }
+                }
+                pdfDocument.Add(new Paragraph($"{parsedStr}\n\n\n", DataFont));
+                pdfDocument.Close();
             }
             catch (IOException ex)
             {
@@ -366,6 +374,11 @@ namespace PDF_OCR
         private void btnMakePDF_Click(object sender, EventArgs e)
         {
             // TODO : 20240219 : 표의 ROWSPAN 인식 기능 추가.
+            MakePDF();
+        }
+
+        private void Form1_Load_1(object sender, EventArgs e)
+        {
             MakePDF();
         }
     }

@@ -63,11 +63,7 @@ namespace PDF_OCR.Class.Global
                                             string inferText = token["cellTextLines"][cntTL]["cellWords"][i]["inferText"].ToString();
                                             sb.Append(i != count - 1 ? $"{inferText} " : inferText);
                                         }
-                                        else
-                                        {
-                                            string inferText = "\n";
-                                            sb.Append("\n");
-                                        }
+                                        else { sb.Append("\n"); }
                                     }
                                     resultTable.Rows.Add(cellid, rowSpan, rowIndex, columnSpan, columnIndex, sb.ToString());
                                 }
