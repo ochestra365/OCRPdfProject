@@ -51,7 +51,7 @@ namespace PDF_OCR
             // 
             // btnConvert
             // 
-            this.btnConvert.Enabled = false;
+            this.btnConvert.FlatStyle = System.Windows.Forms.FlatStyle.Popup;
             this.btnConvert.Location = new System.Drawing.Point(1072, 46);
             this.btnConvert.Name = "btnConvert";
             this.btnConvert.Size = new System.Drawing.Size(324, 368);
@@ -126,6 +126,7 @@ namespace PDF_OCR
             this.Controls.Add(this.picMain);
             this.Controls.Add(this.btnConvert);
             this.Controls.Add(this.rtbOcr);
+            this.Enabled = false;
             this.Name = "Form1";
             this.Text = "Form1";
             this.Load += new System.EventHandler(this.Form1_Load);
