@@ -230,7 +230,7 @@ namespace PDF_OCR
         {
             this.drgMain.DataSource = null;
             rtbOcr.Clear();
-            string jsonString = (!string.IsNullOrEmpty(_text)) ? _text : File.ReadAllText("240221_naver_OCR.json").Replace("\r", "").Replace("\n", "").Replace("\t", "");
+            string jsonString = (!string.IsNullOrEmpty(_text)) ? _text : File.ReadAllText("202421_공백없앤_naver_OCR.json").Replace("\r", "").Replace("\n", "").Replace("\t", "");
             string parsedStr = GlobalVariableController.PrettyPrint(jsonString);
             if (string.IsNullOrEmpty(parsedStr)) { return; }
             rtbOcr.Text = parsedStr;
@@ -240,19 +240,13 @@ namespace PDF_OCR
                 if (File.Exists("ocroutput.pdf")) { File.Delete("ocroutput.pdf"); Thread.Sleep(10); }
                 JEnumerable<JToken> isContainTables = tempJobject["images"][0].Children();
                 bool isContainTable = false;
-                foreach (JToken token in isContainTables)
-                {
-                    if (token.Path.Split('.')[1].Equals("tables"))
-                    {
-                        isContainTable = true;
-                    }
-                }
-                string GulimFont = Environment.GetFolderPath(Environment.SpecialFolder.System) + @"\..\Fonts\gulim.ttc";
-                FontFactory.Register(GulimFont);
+                foreach (JToken token in isContainTables) { if (token.Path.Split('.')[1].Equals("tables")) { isContainTable = true; break; } }
+                FontFactory.Register(Environment.GetFolderPath(Environment.SpecialFolder.System) + @"\..\Fonts\gulim.ttc");
                 Document pdfDocument = new Document(PageSize.A4.Rotate());
                 PdfWriter.GetInstance(pdfDocument, new FileStream("ocroutput.pdf", FileMode.Create));
                 iTextSharp.text.Font DataFont = FontFactory.GetFont("굴림체", BaseFont.IDENTITY_H, 9);
                 pdfDocument.Open();
+                pdfDocument.Add(new Paragraph($"{parsedStr}\n\n\n", DataFont));
                 if (isContainTable)
                 {
                     JEnumerable<JToken> tempToeken = tempJobject["images"][0]["tables"].Children();
@@ -264,8 +258,7 @@ namespace PDF_OCR
                         DataTable jsonTable = new DataTable();
                         DataTable tempTable = new DataTable();
                         jsonTable = GlobalVariableController.GetJsontoDataTable(jsonString, tableCount);
-                        set.Tables.Add(jsonTable);
-                        tableCount++;
+                        if (jsonTable != null) { set.Tables.Add(jsonTable); tableCount++; }
                     }
                     int selectedTable = 0;
                     if (set != null)
@@ -299,6 +292,7 @@ namespace PDF_OCR
                                                 cell.HorizontalAlignment = 1;
                                                 cell.Rowspan = rowSpan;
                                                 cell.Colspan = colSpan;
+                                                if (i == 0) { cell.BackgroundColor = iTextSharp.text.Color.LIGHT_GRAY;}
                                                 table.AddCell(cell);
                                             }
                                             else
@@ -315,6 +309,7 @@ namespace PDF_OCR
                                                 cell.HorizontalAlignment = 1;
                                                 cell.Rowspan = rowSpan;
                                                 cell.Colspan = colSpan;
+                                                if (i == 0) { cell.BackgroundColor = iTextSharp.text.Color.LIGHT_GRAY; }
                                                 table.AddCell(cell);
                                             }
                                         }
@@ -337,6 +332,7 @@ namespace PDF_OCR
                                     {
                                         PdfPCell cell_ = new PdfPCell(new Phrase(resultTable.Rows[i][j].ToString(), DataFont));
                                         cell_.HorizontalAlignment = 1;// 중앙 정렬
+                                        if (i == 0) { cell_.BackgroundColor = iTextSharp.text.Color.LIGHT_GRAY; }
                                         table.AddCell(cell_);
                                     }
                                 }
@@ -347,7 +343,6 @@ namespace PDF_OCR
                         }
                     }
                 }
-                pdfDocument.Add(new Paragraph($"{parsedStr}\n\n\n", DataFont));
                 pdfDocument.Close();
             }
             catch (IOException ex)

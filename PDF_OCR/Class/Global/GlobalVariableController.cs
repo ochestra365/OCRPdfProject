@@ -44,7 +44,6 @@ namespace PDF_OCR.Class.Global
                                 int columnSpan = Convert.ToInt32(token["columnSpan"].ToString());
                                 int columnIndex = Convert.ToInt32(token["columnIndex"].ToString());
                                 StringBuilder sb = new StringBuilder();
-                                string cellTextLines = token["cellTextLines"].ToString();
 
                                 if (token["cellTextLines"].ToString().Equals("[]"))
                                 {
@@ -66,6 +65,7 @@ namespace PDF_OCR.Class.Global
                                         else { sb.Append("\n"); }
                                     }
                                     resultTable.Rows.Add(cellid, rowSpan, rowIndex, columnSpan, columnIndex, sb.ToString());
+                                    
                                 }
                             }
                         }
@@ -77,14 +77,8 @@ namespace PDF_OCR.Class.Global
                     resultTable.Rows.Add("ERR", "ERR", "ERR", "ERR", "ERR", $"{errMessage}");
                     return resultTable;
                 }
-                if (resultTable.Rows.Count > 0)
-                {
-                    return resultTable;
-                }
-                else
-                {
-                    return null;
-                }
+                if (resultTable.Rows.Count > 0) { resultTable.AcceptChanges(); return resultTable; }
+                else { return null; }
             }
             catch (Exception ex)
             {
@@ -99,17 +93,12 @@ namespace PDF_OCR.Class.Global
         /// <returns>보정 문자열</returns>
         public static string PrettyPrint(string _jsonString)
         {
-
             StringBuilder sb = new StringBuilder();
             try
             {
                 JObject Jnaver = JObject.Parse(_jsonString);
                 JEnumerable<JToken> children = Jnaver["images"][0]["fields"].Children();
-                foreach (JToken child in children)
-                {
-                    bool isLinebreak = Boolean.Parse(child.SelectToken("lineBreak").ToString());//라인 분류
-                    sb.Append(isLinebreak ? $"{child.SelectToken("inferText")}\n" : $"{child.SelectToken("inferText")} ");
-                }
+                foreach (JToken child in children) { sb.Append(Boolean.Parse(child.SelectToken("lineBreak").ToString()) ? $"{child.SelectToken("inferText")}\n" : $"{child.SelectToken("inferText")} "); }
                 return sb.ToString();
             }
             catch (Exception ex)
