@@ -58,7 +58,7 @@ namespace PDF_OCR
         {
             try
             {
-                string base64String = Convert.ToBase64String(File.ReadAllBytes("문서관리일정.pdf"));// 바이너리 파일 송신 전용 문자열 변환
+                string base64String = Convert.ToBase64String(File.ReadAllBytes("Image to PDF 20240221 14.23.17.pdf"));// 바이너리 파일 송신 전용 문자열 변환
                 HttpClient client = new HttpClient();// 클라이언트 생성자 생성
                 HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Post, "");//2번째 인자에 발급받은 Api Invoke URL 입력
                 request.Headers.Add("X-OCR-SECRET", "");//2번째 인자에 발급받은 시크릿 코드 입력
@@ -230,13 +230,13 @@ namespace PDF_OCR
         {
             this.drgMain.DataSource = null;
             rtbOcr.Clear();
-            string jsonString = (!string.IsNullOrEmpty(_text)) ? _text : File.ReadAllText("240221_naver_OCR_span.json").Replace("\r", "").Replace("\n", "").Replace("\t", "");
+            string jsonString = (!string.IsNullOrEmpty(_text)) ? _text : File.ReadAllText("202421_공백없앤_naver_OCR.json").Replace("\r", "").Replace("\n", "").Replace("\t", "");
             string parsedStr = GlobalVariableController.PrettyPrint(jsonString);
             rtbOcr.Text = parsedStr;
             JObject tempJobject = JObject.Parse(jsonString);
             try
             {
-                if (File.Exists("output.pdf")) { File.Delete("output.pdf"); Thread.Sleep(10); }
+                if (File.Exists("ocroutput.pdf")) { File.Delete("ocroutput.pdf"); Thread.Sleep(10); }
                 JEnumerable<JToken> tempToeken = tempJobject["images"][0]["tables"].Children();
                 int tableCount = 0;
                 DataSet set = new DataSet();
@@ -258,7 +258,7 @@ namespace PDF_OCR
                     string GulimFont = Environment.GetFolderPath(Environment.SpecialFolder.System) + @"\..\Fonts\gulim.ttc";
                     FontFactory.Register(GulimFont);
                     Document pdfDocument = new Document(PageSize.A4.Rotate());
-                    PdfWriter.GetInstance(pdfDocument, new FileStream("output.pdf", FileMode.Create));
+                    PdfWriter.GetInstance(pdfDocument, new FileStream("ocroutput.pdf", FileMode.Create));
                     iTextSharp.text.Font DataFont = FontFactory.GetFont("굴림체", BaseFont.IDENTITY_H, 9);
                     pdfDocument.Open();
                     while (selectedTable < tableCount)
@@ -268,25 +268,46 @@ namespace PDF_OCR
                             DataTable tempTable = set.Tables[selectedTable];
                             int columnCountMax = tempTable.Rows.Cast<DataRow>().Max<DataRow>(row => (int)row[4]);
                             int rowConutMax = tempTable.Rows.Cast<DataRow>().Max<DataRow>(row => (int)row[2]);
-                            PdfPTable table = new PdfPTable(columnCountMax+1);
+                            PdfPTable table = new PdfPTable(columnCountMax + 1);
 
-                            for (int i = 0; i < rowConutMax; i++)
+                            for (int i = 0; i <= rowConutMax; i++)
                             {
-                                for (int j = 0; j < columnCountMax; j++)
+                                for (int j = 0; j < columnCountMax+1; j++)
                                 {
                                     try
                                     {
-                                        DataRow row = tempTable.AsEnumerable().First(x => int.Parse(x[2].ToString()).Equals(i) && int.Parse(x[4].ToString()).Equals(j));
-                                        int rowSpan = (int)row.ItemArray[1];
-                                        int colSpan = (int)row.ItemArray[3];
-                                        string value = row.ItemArray[5].ToString();
-                                        PdfPCell cell = new PdfPCell(new Phrase(value, DataFont));
-                                        cell.HorizontalAlignment = 1;
-                                        cell.Rowspan = rowSpan;
-                                        cell.Colspan = colSpan;
-                                        table.AddCell(cell);
+                                        DataRow[] sameCoordinate = tempTable.Select($" {tempTable.Columns[2].ColumnName} = '{i}' AND {tempTable.Columns[4].ColumnName}='{j}' ");
+                                        bool isOnlyCoordinate = sameCoordinate.Length == 1;
+                                        if (isOnlyCoordinate)
+                                        {
+                                            DataRow row = tempTable.AsEnumerable().First(x => int.Parse(x[2].ToString()).Equals(i) && int.Parse(x[4].ToString()).Equals(j));
+                                            int rowSpan = (int)row.ItemArray[1];
+                                            int colSpan = (int)row.ItemArray[3];
+                                            string value = row.ItemArray[5].ToString();
+                                            PdfPCell cell = new PdfPCell(new Phrase(value, DataFont));
+                                            cell.HorizontalAlignment = 1;
+                                            cell.Rowspan = rowSpan;
+                                            cell.Colspan = colSpan;
+                                            table.AddCell(cell);
+                                        }
+                                        else
+                                        {
+                                            int rowSpan = (int)sameCoordinate[0].ItemArray[1];
+                                            int colSpan = (int)sameCoordinate[0].ItemArray[3];
+                                            StringBuilder sb = new StringBuilder();
+                                            for(int k = 0; k < sameCoordinate.Length; k++)
+                                            {
+                                                string value = sameCoordinate[k].ItemArray[5].ToString();
+                                                sb.Append(k!=sameCoordinate.Length-1 ? $"{value}\n" : $"{value}");
+                                            }
+                                            PdfPCell cell = new PdfPCell(new Phrase(sb.ToString(), DataFont));
+                                            cell.HorizontalAlignment = 1;
+                                            cell.Rowspan = rowSpan;
+                                            cell.Colspan = colSpan;
+                                            table.AddCell(cell);
+                                        }
                                     }
-                                    catch (Exception)
+                                    catch (Exception ex)
                                     {
                                         continue;
                                     }

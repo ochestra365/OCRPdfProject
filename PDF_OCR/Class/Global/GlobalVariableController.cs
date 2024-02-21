@@ -35,36 +35,43 @@ namespace PDF_OCR.Class.Global
                     {
                         if (token.HasValues)
                         {
-                            string cellid = (++index).ToString();
-                            int rowSpan = Convert.ToInt32(token["rowSpan"].ToString());
-                            int rowIndex = Convert.ToInt32(token["rowIndex"].ToString());
-                            int columnSpan = Convert.ToInt32(token["columnSpan"].ToString());
-                            int columnIndex = Convert.ToInt32(token["columnIndex"].ToString());
-                            StringBuilder sb = new StringBuilder();
-                            string cellTextLines = token["cellTextLines"].ToString();
-                            if (token["cellTextLines"].ToString().Equals("[]"))
+                            int cellTextLineCount = token["cellTextLines"].Count<JToken>();
+                            for (int cntTL = 0; cntTL < cellTextLineCount; cntTL++)
                             {
-                                sb.Append("");
-                            }
-                            else
-                            {
-                                int count = token["cellTextLines"][0]["cellWords"].Count<JToken>();
-                                for (int i = 0; i < count; i++)
+                                string cellid = (++index).ToString();
+                                int rowSpan = Convert.ToInt32(token["rowSpan"].ToString());
+                                int rowIndex = Convert.ToInt32(token["rowIndex"].ToString());
+                                int columnSpan = Convert.ToInt32(token["columnSpan"].ToString());
+                                int columnIndex = Convert.ToInt32(token["columnIndex"].ToString());
+                                StringBuilder sb = new StringBuilder();
+                                string cellTextLines = token["cellTextLines"].ToString();
+
+                                if (token["cellTextLines"].ToString().Equals("[]"))
                                 {
-                                    string tokenContent = token["cellTextLines"][0].ToString();
-                                    if (tokenContent.Contains("inferText"))
+                                    sb.Append("");
+                                    resultTable.Rows.Add(cellid, rowSpan, rowIndex, columnSpan, columnIndex, sb.ToString());
+                                }
+                                else
+                                {
+                                    int count = token["cellTextLines"][cntTL]["cellWords"].Count<JToken>();
+                                    for (int i = 0; i < count; i++)
                                     {
-                                        string inferText = token["cellTextLines"][0]["cellWords"][i]["inferText"].ToString();
-                                        sb.Append(i != count - 1 ? $"{inferText} " : inferText);
+                                        string tokenContent = token["cellTextLines"][cntTL].ToString();
+
+                                        if (tokenContent.Contains("inferText"))
+                                        {
+                                            string inferText = token["cellTextLines"][cntTL]["cellWords"][i]["inferText"].ToString();
+                                            sb.Append(i != count - 1 ? $"{inferText} " : inferText);
+                                        }
+                                        else
+                                        {
+                                            string inferText = "\n";
+                                            sb.Append("\n");
+                                        }
                                     }
-                                    else
-                                    {
-                                        string inferText = "\n";
-                                        sb.Append("\n");
-                                    }
+                                    resultTable.Rows.Add(cellid, rowSpan, rowIndex, columnSpan, columnIndex, sb.ToString());
                                 }
                             }
-                            resultTable.Rows.Add(cellid, rowSpan, rowIndex, columnSpan, columnIndex, sb.ToString());
                         }
                     }
                 }
