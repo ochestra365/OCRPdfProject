@@ -58,7 +58,9 @@ namespace PDF_OCR
         {
             try
             {
-                string base64String = Convert.ToBase64String(File.ReadAllBytes("글자와표.pdf"));// 바이너리 파일 송신 전용 문자열 변환
+                string whatIwantToRead = "글자와표.pdf";
+                if (!File.Exists(whatIwantToRead)) { MessageBox.Show("파일이 없습니다.","안내",MessageBoxButtons.OK,MessageBoxIcon.Information); return; }
+                string base64String = Convert.ToBase64String(File.ReadAllBytes(whatIwantToRead));// 바이너리 파일 송신 전용 문자열 변환
                 HttpClient client = new HttpClient();// 클라이언트 생성자 생성
                 HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Post, "");//2번째 인자에 발급받은 Api Invoke URL 입력
                 request.Headers.Add("X-OCR-SECRET", "");//2번째 인자에 발급받은 시크릿 코드 입력
