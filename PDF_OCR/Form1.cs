@@ -16,6 +16,7 @@ using System.Data;
 using PDF_OCR.Class.Global;
 using System.Threading;
 using System.Linq;
+using System.Collections.Generic;
 
 namespace PDF_OCR
 {
@@ -36,9 +37,8 @@ namespace PDF_OCR
         3. Convert image to text(tesseract)
         */
         #region field
-        private string url = "https://a76qrjk90b.apigw.ntruss.com/custom/v1/28075/5c4b24044cbadee6b6f258977a87019cbc14e5e63d4cacfee629995432f8691c/general";
-        private string clientSecret = "S1B5c2tuY1l1eGF6U0FXelhWTE9WQUdjY0taUVJibkU=";
-        private DataSet PDF_TABLE = new DataSet();
+        private string url = "";
+        private string clientSecret = "";
         #endregion
 
 
@@ -58,10 +58,10 @@ namespace PDF_OCR
         {
             try
             {
-                string base64String = Convert.ToBase64String(File.ReadAllBytes("image.pdf"));// 바이너리 파일 송신 전용 문자열 변환
+                string base64String = Convert.ToBase64String(File.ReadAllBytes("문서관리일정.pdf"));// 바이너리 파일 송신 전용 문자열 변환
                 HttpClient client = new HttpClient();// 클라이언트 생성자 생성
-                HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Post, "URL");//2번째 인자에 발급받은 Api Invoke URL 입력
-                request.Headers.Add("X-OCR-SECRET", "SECRET_KEY");//2번째 인자에 발급받은 시크릿 코드 입력
+                HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Post, "");//2번째 인자에 발급받은 Api Invoke URL 입력
+                request.Headers.Add("X-OCR-SECRET", "");//2번째 인자에 발급받은 시크릿 코드 입력
 
                 StringContent content2 = new StringContent("{\"images\": [{\"format\": \"pdf\",\"name\": \"guide-demo\"," +// 요청 BODY 내용
                    $"\"data\": \"{base64String}" +
@@ -70,7 +70,7 @@ namespace PDF_OCR
                    "\"requestId\": \"string\"," +
                    "\"resultType\": \"string\"," +
                    "\"timestamp\": 1708009431," +
-                   "\"version\": \"V1\"," +
+                   "\"version\": \"V2\"," +
                    "\"enableTableDetection\" : true}", null, "application/json");
 
                 request.Content = content2;// 요청에 값 입력
@@ -81,7 +81,7 @@ namespace PDF_OCR
                     string responsedString = string.Empty;
                     responsedString = await response.Content.ReadAsStringAsync();// 응답 값의 Body 문자열 입력
                     rtbOcr.Text = responsedString;
-                    JObject tempJobject = GetJObject(responsedString);
+                    MakePDF(responsedString);
                 }
             }
             catch (Exception ex)
@@ -230,15 +230,13 @@ namespace PDF_OCR
         {
             this.drgMain.DataSource = null;
             rtbOcr.Clear();
-            string jsonString = File.ReadAllText("[표22]TextOCR[20240219145919].json").Replace("\r", "").Replace("\n", "").Replace("\t", "");
+            string jsonString = (!string.IsNullOrEmpty(_text)) ? _text : File.ReadAllText("240221_naver_OCR_span.json").Replace("\r", "").Replace("\n", "").Replace("\t", "");
             string parsedStr = GlobalVariableController.PrettyPrint(jsonString);
             rtbOcr.Text = parsedStr;
             JObject tempJobject = JObject.Parse(jsonString);
             try
             {
                 if (File.Exists("output.pdf")) { File.Delete("output.pdf"); Thread.Sleep(10); }
-                // DataTable화
-                // 표 정보 DataSet에 모두 저장
                 JEnumerable<JToken> tempToeken = tempJobject["images"][0]["tables"].Children();
                 int tableCount = 0;
                 DataSet set = new DataSet();
@@ -248,59 +246,87 @@ namespace PDF_OCR
                     DataTable jsonTable = new DataTable();
                     DataTable tempTable = new DataTable();
                     jsonTable = GlobalVariableController.GetJsontoDataTable(jsonString, tableCount);
-                    tempTable = jsonTable.Copy();
                     set.Tables.Add(jsonTable);
-                    this.PDF_TABLE.Tables.Add(tempTable);
                     tableCount++;
                 }
-                if (this.PDF_TABLE != null)
+                int selectedTable = 0;
+
+                if (set != null)
                 {
                     bool isSpanExist = false;
-                    // span이 있는 지 확인
-                    isSpanExist = this.PDF_TABLE.Tables[1].Rows.Cast<DataRow>().Any(row => (row["rowSpan"].ToString() != "1") || (row["columnSpan"].ToString() != "1"));
-                    // itextSharp에 한글 폰트 추가.
+                    isSpanExist = set.Tables[selectedTable].Rows.Cast<DataRow>().Any(row => (row["rowSpan"].ToString() != "1") || (row["columnSpan"].ToString() != "1"));
                     string GulimFont = Environment.GetFolderPath(Environment.SpecialFolder.System) + @"\..\Fonts\gulim.ttc";
-                    // itextSharp 폰트 저장
                     FontFactory.Register(GulimFont);
-                    // A4 크기의 pdf 문서 생성
                     Document pdfDocument = new Document(PageSize.A4.Rotate());
-                    // 파일을 생성하면서 output.pdf 글자를 만든다.
                     PdfWriter.GetInstance(pdfDocument, new FileStream("output.pdf", FileMode.Create));
-                    // itextSharp이 선택할 폰트 정보. -> 2번째 인자가 무슨 의미인 지 모름.(폰트, ?, 폰트 크기)
                     iTextSharp.text.Font DataFont = FontFactory.GetFont("굴림체", BaseFont.IDENTITY_H, 9);
-                    // 생성한 PDF 열기
                     pdfDocument.Open();
-
-                    // span기능 테이블 구현 추가.
-                    if (isSpanExist)
+                    while (selectedTable < tableCount)
                     {
-                        int columnCountMax = 0;
-                        int rowConutMax = 0;
-                        DataTable tempTable = this.PDF_TABLE.Tables[1];
-                        columnCountMax =tempTable.Rows.Cast<DataRow>().Max<DataRow>(row => int.Parse(row[4].ToString()));
-                        PdfPTable table = new PdfPTable(columnCountMax);
-                        
-                        pdfDocument.Add(table);
-                    }
-                    else
-                    {
-                        resultTable = GlobalVariableController.MakeNoSpanResultTable(this.PDF_TABLE.Tables[0]);
-                        if (resultTable == null) { return; }
-
-                        PdfPTable table = new PdfPTable(resultTable.Columns.Count);
-                        for (int i = 0; i < resultTable.Rows.Count; i++)
+                        if (isSpanExist)
                         {
-                            for (int j = 0; j < resultTable.Columns.Count; j++)
+                            DataTable tempTable = set.Tables[selectedTable];
+                            int columnCountMax = tempTable.Rows.Cast<DataRow>().Max<DataRow>(row => (int)row[4]);
+                            int rowConutMax = tempTable.Rows.Cast<DataRow>().Max<DataRow>(row => (int)row[2]);
+                            PdfPTable table = new PdfPTable(columnCountMax+1);
+
+                            for (int i = 0; i < rowConutMax; i++)
                             {
-                                PdfPCell cell_ = new PdfPCell(new Phrase(resultTable.Rows[i][j].ToString(), DataFont));
-                                cell_.HorizontalAlignment = 1;// 중앙 정렬
-                                table.AddCell(cell_);
+                                for (int j = 0; j < columnCountMax; j++)
+                                {
+                                    try
+                                    {
+                                        DataRow row = tempTable.AsEnumerable().First(x => int.Parse(x[2].ToString()).Equals(i) && int.Parse(x[4].ToString()).Equals(j));
+                                        int rowSpan = (int)row.ItemArray[1];
+                                        int colSpan = (int)row.ItemArray[3];
+                                        string value = row.ItemArray[5].ToString();
+                                        PdfPCell cell = new PdfPCell(new Phrase(value, DataFont));
+                                        cell.HorizontalAlignment = 1;
+                                        cell.Rowspan = rowSpan;
+                                        cell.Colspan = colSpan;
+                                        table.AddCell(cell);
+                                    }
+                                    catch (Exception)
+                                    {
+                                        continue;
+                                    }
+                                }
                             }
+
+                            pdfDocument.Add(table);
+                            pdfDocument.Add(new Paragraph($"\n\n\n", DataFont));
                         }
-                        pdfDocument.Add(table);
+                        else
+                        {
+                            resultTable = GlobalVariableController.MakeNoSpanResultTable(set.Tables[selectedTable]);
+                            if (resultTable == null) { return; }
+
+                            PdfPTable table = new PdfPTable(resultTable.Columns.Count);
+                            for (int i = 0; i < resultTable.Rows.Count; i++)
+                            {
+                                for (int j = 0; j < resultTable.Columns.Count; j++)
+                                {
+                                    PdfPCell cell_ = new PdfPCell(new Phrase(resultTable.Rows[i][j].ToString(), DataFont));
+                                    cell_.HorizontalAlignment = 1;// 중앙 정렬
+                                    table.AddCell(cell_);
+                                }
+                            }
+                            pdfDocument.Add(table);
+                            pdfDocument.Add(new Paragraph($"\n\n\n", DataFont));
+                        }
+                        selectedTable++;
                     }
+
                     pdfDocument.Add(new Paragraph($"{parsedStr}\n\n\n", DataFont));
                     pdfDocument.Close();
+                }
+            }
+            catch (IOException ex)
+            {
+                // 나중에 경로 파일로 유효성 검증한다.
+                if (ex.Message.Contains(Application.StartupPath))
+                {
+                    MessageBox.Show("파일이 열려 있습니다.\n파일을 닫아주세요", "안내", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 }
             }
             catch (Exception ex)
@@ -308,6 +334,8 @@ namespace PDF_OCR
                 Console.WriteLine(ex.ToString());
             }
         }
+
+
 
         private void Form1_Load(object sender, EventArgs e)
         {
