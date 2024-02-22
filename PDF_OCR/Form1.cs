@@ -263,9 +263,19 @@ namespace PDF_OCR
                     if (set != null)
                     {
                         bool isSpanExist = false;
-                        isSpanExist = set.Tables[selectedTable].Rows.Cast<DataRow>().Any(row => (row["rowSpan"].ToString() != "1") || (row["columnSpan"].ToString() != "1"));
+                        bool isRowSpanExist = false;
+                        bool isColSpanExist = false;
+                        // 20240222 행, 열의 스판 존재 여부 확인 기능 작동 하지 않는다.
+                        foreach (DataRow row in set.Tables[selectedTable].Rows) { if (int.Parse(row[1].ToString()).Equals(1)) { isRowSpanExist = true; break; } }
+                        foreach (DataRow row in set.Tables[selectedTable].Rows) { if (int.Parse(row[3].ToString()).Equals(1)) { isColSpanExist = true; break; } }
+                        isSpanExist = isRowSpanExist || isColSpanExist;
+
+
                         while (selectedTable < tableCount)
                         {
+                            if (selectedTable == 1) { string hi = string.Empty; }
+
+
                             if (isSpanExist)
                             {
                                 DataTable tempTable = set.Tables[selectedTable];
