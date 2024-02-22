@@ -53,9 +53,13 @@ namespace PDF_OCR
         /// <param name="e"></param>
         private async void btnConvert_Click(object sender, EventArgs e)
         {
+           
+        }
+        private async void GetNaver(string _path)
+        {
             try
             {
-                string base64String = Convert.ToBase64String(File.ReadAllBytes("글자와표.pdf"));// 바이너리 파일 송신 전용 문자열 변환
+                string base64String = Convert.ToBase64String(File.ReadAllBytes(_path));// 바이너리 파일 송신 전용 문자열 변환
                 HttpClient client = new HttpClient();// 클라이언트 생성자 생성
                 HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Post, "");//2번째 인자에 발급받은 Api Invoke URL 입력
                 request.Headers.Add("X-OCR-SECRET", "");//2번째 인자에 발급받은 시크릿 코드 입력
@@ -226,7 +230,7 @@ namespace PDF_OCR
         {
             this.drgMain.DataSource = null;
             rtbOcr.Clear();
-            string jsonString = (!string.IsNullOrEmpty(_text)) ? _text : File.ReadAllText("[문서관리일정]TextOCR[20240222085427].json").Replace("\r", "").Replace("\n", "").Replace("\t", "");
+            string jsonString = (!string.IsNullOrEmpty(_text)) ? _text : File.ReadAllText("사업계획서_낙서된거.json").Replace("\r", "").Replace("\n", "").Replace("\t", "");
             string parsedStr = GlobalVariableController.PrettyPrint(jsonString);
             if (string.IsNullOrEmpty(parsedStr)) { return; }
             rtbOcr.Text = parsedStr;
@@ -283,6 +287,7 @@ namespace PDF_OCR
                                                 int rowSpan = (int)row.ItemArray[1];
                                                 int colSpan = (int)row.ItemArray[3];
                                                 string value = row.ItemArray[5].ToString();
+                                                value = value.Length > 560 ? value.Substring(0, 560) : value;
                                                 PdfPCell cell = new PdfPCell(new Phrase(value, DataFont));
                                                 cell.HorizontalAlignment = 1;
                                                 cell.Rowspan = rowSpan;
@@ -300,7 +305,9 @@ namespace PDF_OCR
                                                     string value = sameCoordinate[k].ItemArray[5].ToString();
                                                     sb.Append(k != sameCoordinate.Length - 1 ? $"{value}\n" : $"{value}");
                                                 }
-                                                PdfPCell cell = new PdfPCell(new Phrase(sb.ToString(), DataFont));
+                                                string finalValue = sb.ToString();
+                                                finalValue = finalValue.Length > 560 ? finalValue.Substring(0, 560) : finalValue;
+                                                PdfPCell cell = new PdfPCell(new Phrase(finalValue, DataFont));
                                                 cell.HorizontalAlignment = 1;
                                                 cell.Rowspan = rowSpan;
                                                 cell.Colspan = colSpan;
