@@ -53,7 +53,7 @@ namespace PDF_OCR
         /// <param name="e"></param>
         private async void btnConvert_Click(object sender, EventArgs e)
         {
-           
+
         }
         private async void GetNaver(string _path)
         {
@@ -230,7 +230,7 @@ namespace PDF_OCR
         {
             this.drgMain.DataSource = null;
             rtbOcr.Clear();
-            string jsonString = (!string.IsNullOrEmpty(_text)) ? _text : File.ReadAllText("사업계획서_낙서된거.json").Replace("\r", "").Replace("\n", "").Replace("\t", "");
+            string jsonString = (!string.IsNullOrEmpty(_text)) ? _text : File.ReadAllText("[개발비]TextOCR[20240222144639].json").Replace("\r", "").Replace("\n", "").Replace("\t", "");
             string parsedStr = GlobalVariableController.PrettyPrint(jsonString);
             if (string.IsNullOrEmpty(parsedStr)) { return; }
             rtbOcr.Text = parsedStr;
@@ -273,9 +273,6 @@ namespace PDF_OCR
 
                         while (selectedTable < tableCount)
                         {
-                            if (selectedTable == 1) { string hi = string.Empty; }
-
-
                             if (isSpanExist)
                             {
                                 DataTable tempTable = set.Tables[selectedTable];
@@ -328,8 +325,13 @@ namespace PDF_OCR
                                         catch { continue; }
                                     }
                                 }
-
-                                pdfDocument.Add(table);
+                                try { pdfDocument.Add(table); }
+                                catch (Exception ex)
+                                {
+                                    MessageBox.Show($"인식된 표 중 {selectedTable + 1}번 표가 제대로 인식되지 않습니다.\n표 형태를 다시 확인 부탁드립니다.", "안내", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                                    selectedTable++;
+                                    continue;
+                                }
                                 pdfDocument.Add(new Paragraph($"\n\n\n", DataFont));
                             }
                             else
@@ -348,7 +350,13 @@ namespace PDF_OCR
                                         table.AddCell(cell_);
                                     }
                                 }
-                                pdfDocument.Add(table);
+                                try { pdfDocument.Add(table); }
+                                catch (Exception ex)
+                                {
+                                    MessageBox.Show($"인식된 표 중 {selectedTable + 1}번 표가 제대로 인식되지 않습니다.\n표 형태를 다시 확인 부탁드립니다.", "안내", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                                    selectedTable++;
+                                    continue;
+                                }
                                 pdfDocument.Add(new Paragraph($"\n\n\n", DataFont));
                             }
                             selectedTable++;
