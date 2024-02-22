@@ -35,37 +35,51 @@ namespace PDF_OCR.Class.Global
                     {
                         if (token.HasValues)
                         {
+                            // 240222 isos psc : cellTextLineCount요소 존재. 그러나 요소의 개수가 0인 경우 아래 for문에서 skip을 하니, 표의 행렬 좌표 또한 SKIP.
                             int cellTextLineCount = token["cellTextLines"].Count<JToken>();
-                            for (int cntTL = 0; cntTL < cellTextLineCount; cntTL++)
+                            if (cellTextLineCount == 0)
                             {
                                 string cellid = (++index).ToString();
                                 int rowSpan = Convert.ToInt32(token["rowSpan"].ToString());
                                 int rowIndex = Convert.ToInt32(token["rowIndex"].ToString());
                                 int columnSpan = Convert.ToInt32(token["columnSpan"].ToString());
                                 int columnIndex = Convert.ToInt32(token["columnIndex"].ToString());
-                                StringBuilder sb = new StringBuilder();
+                                resultTable.Rows.Add(cellid, rowSpan, rowIndex, columnSpan, columnIndex, string.Empty);
+                            }
+                            else
+                            {
+                                for (int cntTL = 0; cntTL < cellTextLineCount; cntTL++)
+                                {
+                                    string cellid = (++index).ToString();
+                                    int rowSpan = Convert.ToInt32(token["rowSpan"].ToString());
+                                    int rowIndex = Convert.ToInt32(token["rowIndex"].ToString());
+                                    int columnSpan = Convert.ToInt32(token["columnSpan"].ToString());
+                                    int columnIndex = Convert.ToInt32(token["columnIndex"].ToString());
+                                    StringBuilder sb = new StringBuilder();
 
-                                if (token["cellTextLines"].ToString().Equals("[]"))
-                                {
-                                    sb.Append("");
-                                    resultTable.Rows.Add(cellid, rowSpan, rowIndex, columnSpan, columnIndex, sb.ToString());
-                                }
-                                else
-                                {
-                                    int count = token["cellTextLines"][cntTL]["cellWords"].Count<JToken>();
-                                    for (int i = 0; i < count; i++)
+                                    if (token["cellTextLines"].ToString().Equals("[]"))
                                     {
-                                        string tokenContent = token["cellTextLines"][cntTL].ToString();
-
-                                        if (tokenContent.Contains("inferText"))
-                                        {
-                                            string inferText = token["cellTextLines"][cntTL]["cellWords"][i]["inferText"].ToString();
-                                            sb.Append(i != count - 1 ? $"{inferText} " : inferText);
-                                        }
-                                        else { sb.Append("\n"); }
+                                        sb.Append("");
+                                        resultTable.Rows.Add(cellid, rowSpan, rowIndex, columnSpan, columnIndex, sb.ToString());
                                     }
-                                    resultTable.Rows.Add(cellid, rowSpan, rowIndex, columnSpan, columnIndex, sb.ToString());
-                                    
+                                    else
+                                    {
+                                        if (cellid.Equals("12")) { string hi = "stop"; }
+                                        int count = token["cellTextLines"][cntTL]["cellWords"].Count<JToken>();
+                                        for (int i = 0; i < count; i++)
+                                        {
+                                            string tokenContent = token["cellTextLines"][cntTL].ToString();
+
+                                            if (tokenContent.Contains("inferText"))
+                                            {
+                                                string inferText = token["cellTextLines"][cntTL]["cellWords"][i]["inferText"].ToString();
+                                                sb.Append(i != count - 1 ? $"{inferText} " : inferText);
+                                            }
+                                            else { sb.Append("\n"); }
+                                        }
+                                        resultTable.Rows.Add(cellid, rowSpan, rowIndex, columnSpan, columnIndex, sb.ToString());
+
+                                    }
                                 }
                             }
                         }

@@ -8,7 +8,6 @@ using Ghostscript.NET.Rasterizer;
 using iTextSharp.text.pdf;
 using iTextSharp.text;
 using System.Net;
-using System.Xml;
 using System.Text;
 using Newtonsoft.Json.Linq;
 using System.Net.Http;
@@ -40,8 +39,6 @@ namespace PDF_OCR
         private string url = "";
         private string clientSecret = "";
         #endregion
-
-
         public Form1()
         {
             InitializeComponent();
@@ -89,7 +86,6 @@ namespace PDF_OCR
                 Console.WriteLine($"ERROR : {ex}");
             }
         }
-
         private void btnNaverSearch_Click(object sender, EventArgs e)
         {
             //this.PDF_TABLE = new DataSet();
@@ -230,7 +226,7 @@ namespace PDF_OCR
         {
             this.drgMain.DataSource = null;
             rtbOcr.Clear();
-            string jsonString = (!string.IsNullOrEmpty(_text)) ? _text : File.ReadAllText("202421_공백없앤_naver_OCR.json").Replace("\r", "").Replace("\n", "").Replace("\t", "");
+            string jsonString = (!string.IsNullOrEmpty(_text)) ? _text : File.ReadAllText("[문서관리일정]TextOCR[20240222085427].json").Replace("\r", "").Replace("\n", "").Replace("\t", "");
             string parsedStr = GlobalVariableController.PrettyPrint(jsonString);
             if (string.IsNullOrEmpty(parsedStr)) { return; }
             rtbOcr.Text = parsedStr;
@@ -240,13 +236,13 @@ namespace PDF_OCR
                 if (File.Exists("ocroutput.pdf")) { File.Delete("ocroutput.pdf"); Thread.Sleep(10); }
                 JEnumerable<JToken> isContainTables = tempJobject["images"][0].Children();
                 bool isContainTable = false;
-                foreach (JToken token in isContainTables) { if (token.Path.Split('.')[1].Equals("tables")) { isContainTable = true; break; } }
                 FontFactory.Register(Environment.GetFolderPath(Environment.SpecialFolder.System) + @"\..\Fonts\gulim.ttc");
                 Document pdfDocument = new Document(PageSize.A4.Rotate());
                 PdfWriter.GetInstance(pdfDocument, new FileStream("ocroutput.pdf", FileMode.Create));
                 iTextSharp.text.Font DataFont = FontFactory.GetFont("굴림체", BaseFont.IDENTITY_H, 9);
                 pdfDocument.Open();
                 pdfDocument.Add(new Paragraph($"{parsedStr}\n\n\n", DataFont));
+                foreach (JToken token in isContainTables) { if (token.Path.Split('.')[1].Equals("tables")) { isContainTable = true; break; } }
                 if (isContainTable)
                 {
                     JEnumerable<JToken> tempToeken = tempJobject["images"][0]["tables"].Children();
@@ -256,7 +252,6 @@ namespace PDF_OCR
                     foreach (JToken item in tempToeken)
                     {
                         DataTable jsonTable = new DataTable();
-                        DataTable tempTable = new DataTable();
                         jsonTable = GlobalVariableController.GetJsontoDataTable(jsonString, tableCount);
                         if (jsonTable != null) { set.Tables.Add(jsonTable); tableCount++; }
                     }
@@ -292,7 +287,7 @@ namespace PDF_OCR
                                                 cell.HorizontalAlignment = 1;
                                                 cell.Rowspan = rowSpan;
                                                 cell.Colspan = colSpan;
-                                                if (i == 0) { cell.BackgroundColor = iTextSharp.text.Color.LIGHT_GRAY;}
+                                                if (i == 0) { cell.BackgroundColor = iTextSharp.text.Color.LIGHT_GRAY; }
                                                 table.AddCell(cell);
                                             }
                                             else
@@ -343,6 +338,7 @@ namespace PDF_OCR
                         }
                     }
                 }
+                else { pdfDocument.Add(new Paragraph($"{parsedStr}\n\n\n", DataFont)); }
                 pdfDocument.Close();
             }
             catch (IOException ex)
@@ -358,20 +354,11 @@ namespace PDF_OCR
                 Console.WriteLine(ex.ToString());
             }
         }
-
-
-
-        private void Form1_Load(object sender, EventArgs e)
-        {
-
-        }
-
         private void btnMakePDF_Click(object sender, EventArgs e)
         {
             // TODO : 20240219 : 표의 ROWSPAN 인식 기능 추가.
             MakePDF();
         }
-
         private void Form1_Load_1(object sender, EventArgs e)
         {
             MakePDF();
